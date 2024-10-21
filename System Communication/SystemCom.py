@@ -290,7 +290,7 @@ class Camera(_Messaging, FallFile):
             coord_arr.extend([(coord_x >> 8) & 0xff, coord_x & 0xff, (coord_y >> 8) & 0xff, coord_y & 0xff])
         self._sendCoordinates(coord_arr, 0x03)
     
-    def sendNotification(self, notification_str, notification_type, bed_num):
+    def sendAlert(self, notification_str, notification_type, bed_num):
         '''To send the notification packet {notification_str} to the nurses terminal'''
         msg_arr = [0x04, bed_num, notification_type] # Message type  = notification
         msg_str_arr = bytearray(notification_str, 'utf-8') # message content array
