@@ -3,9 +3,9 @@ SystemDB.py file contains the database classes while the SystemCom.py file conta
 
 Importing this module to a Camera
     import Camera from SystemCom as {Prefared_reference}
-    This module will initialize the communication, and provied an interger variable {SharedVariable} that will hold the latest command sent from the termial.
+    This module will initialize the communication, and provide an interger variable {SharedVariable} that will hold the latest command sent from the termial.
     
-    The terminal ID will also be automatically read during initialization so you wont't need to call a method to get the communication.
+    The terminal ID will also be automatically read the terminal id during initialization so you wont't need to call a method to get the terminal id.
 
     Methods to be used and how they should be used.
 
@@ -75,3 +75,16 @@ Importing this module to a Camera
         For instance, if a patient is at the edge of the bed (about falling), notification_type=1
                       if the patient has fallen, notification_type=2
         * bed_num= the bed that's triggering the notifcation, that is the bed having the patient you're report for.
+
+
+Importing this module for the terminal
+    import Terminal from SystemCom as {Prefared_reference}
+    This module will initialize the communication
+
+    Methods to be used and how they should be used:
+
+    [Prefared_reference.checkForIncoming]
+    Create a thread that will always run the method {Prefare_reference.checkForIncoming}.
+    It is essential that this method runs on it's own thread so that no incoming message (in this case Alerts and coordinates from a camera) is lost.
+    This method handles all incoming message internally, process and store to the database.
+    So you interact with your database to get any possible alert or notification. So the terminal interacts with mostly database methods

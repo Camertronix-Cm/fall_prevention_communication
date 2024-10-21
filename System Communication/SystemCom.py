@@ -122,49 +122,6 @@ class _Messaging(FallDB):
             message_arr.extend(struct.pack('!I', message_timestamp))
         message_arr.extend(msg_arr[3:])
         self._sendOrPendMsg(message_arr)
-
-    def _messageHandler(self, message_arr): # array from pos 11
-        '''Will handle the incoming messages and save in the database'''
-        # message_arr is the source ID [0, 1], the bed [2] alert severity [3], the timestamp [4, 5, 6, 7], and the message content [19 ---]
-        print(' message data')
-        print(" ".join(hex(num) for num in message_arr))
-        # get the source id of the incoming alert
-        # the bed_id will be the camera id + the bed num
-        source_bed_id = message_arr[1] + message_arr[0]*0x100 + message_arr[2]
-        # get the alert severity
-        alert_severity = message_arr[3]
-        # get the timestamp
-        message_timestamp = struct.unpack("!I", bytes(message_arr[4:8]))[0]
-        # get the message content
-        message_array = message_arr[8:]
-        print(" ".join(hex(num) for num in message_array))
-        # covert the message content to a string
-        message_content = ''.join([chr(x) for x in message_array])
-        # add the message to the database
-        self.addAlert(message_timestamp, source_bed_id, alert_severity, message_content)
-    
-    def _coordinatesHandler(self, coord_key, coord_arr):
-        '''Will handle the incoming coordinates and save in the database'''
-        # coord_arr is the source_ID [0, 1], the number of coordinates [2, 3], the coordinates [4 ---]
-        # get the source of the coords
-        coord_source_id = coord_arr[0] + coord_arr[1]*0x100
-        # get the number of coords
-        num_coords = coord_arr[2] + coord_arr[3]*0x100
-        # get the coordinates
-        coord_array = coord_arr[4:]
-        # add the coordinates to the database
-        if coord_key == 'Bed':
-            for num in range(num_coords):
-                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + str(coord_array[7] + coord_array[6]*0x100)
-                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str)
-                # remove the first eight elements of the arr
-                coord_array = coord_array[8:]
-        elif coord_key == 'Patient':
-            for num in range(num_coords):
-                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100)
-                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str)
-                # remove the first four elements of the arr
-                coord_array = coord_array[4:]
     
     def _checkForIncoming(self):
         '''Collect and Process any serial incoming packets
@@ -341,6 +298,49 @@ class Terminal(_Messaging):
         cmd_arr = [0x01, the_cmd]
         self._sendMeshMessage(cmd_destination, cmd_arr)
     
+    def _messageHandler(self, message_arr): # array from pos 11
+        '''Will handle the incoming messages and save in the database'''
+        # message_arr is the source ID [0, 1], the bed [2] alert severity [3], the timestamp [4, 5, 6, 7], and the message content [19 ---]
+        print(' message data')
+        print(" ".join(hex(num) for num in message_arr))
+        # get the source id of the incoming alert
+        # the bed_id will be the camera id + the bed num
+        source_bed_id = message_arr[1] + message_arr[0]*0x100 + message_arr[2]
+        # get the alert severity
+        alert_severity = message_arr[3]
+        # get the timestamp
+        message_timestamp = struct.unpack("!I", bytes(message_arr[4:8]))[0]
+        # get the message content
+        message_array = message_arr[8:]
+        print(" ".join(hex(num) for num in message_array))
+        # covert the message content to a string
+        message_content = ''.join([chr(x) for x in message_array])
+        # add the message to the database
+        self.addAlert(message_timestamp, source_bed_id, alert_severity, message_content)
+    
+    def _coordinatesHandler(self, coord_key, coord_arr):
+        '''Will handle the incoming coordinates and save in the database'''
+        # coord_arr is the source_ID [0, 1], the number of coordinates [2, 3], the coordinates [4 ---]
+        # get the source of the coords
+        coord_source_id = coord_arr[0] + coord_arr[1]*0x100
+        # get the number of coords
+        num_coords = coord_arr[2] + coord_arr[3]*0x100
+        # get the coordinates
+        coord_array = coord_arr[4:]
+        # add the coordinates to the database
+        if coord_key == 'Bed':
+            for num in range(num_coords):
+                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + str(coord_array[7] + coord_array[6]*0x100)
+                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str)
+                # remove the first eight elements of the arr
+                coord_array = coord_array[8:]
+        elif coord_key == 'Patient':
+            for num in range(num_coords):
+                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100)
+                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str)
+                # remove the first four elements of the arr
+                coord_array = coord_array[4:]
+
     def checkForIncoming(self):
         '''Collect and Process any serial incoming packets'''
         incoming = self._checkForIncoming()
@@ -389,3 +389,4 @@ class Terminal(_Messaging):
                 print(incoming[15:len(incoming)-2])
                 self._messageHandler(incoming[11 : len(incoming)-2])
                 print("done")
+

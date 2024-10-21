@@ -4,9 +4,9 @@ import json
 class FallDB:
     def __init__(self):
         self.__database_name = 'system.db'
-        self.__MsgTable_Name = 'Ward'
+        self.__MsgTable_Name = 'Msg'
 
-        self.__WardTable_Name = 'Ward'
+        self.__UnitTable_Name = 'Unit'
         self.__RefStatusTable_Name = 'RefStatus'
         self.__RoomTable_Name = 'Room'
         self.__BedTable_Name = 'Bed'
@@ -42,7 +42,7 @@ class FallDB:
         db_connect = sqlite3.connect(self.__database_name)
         cursor = db_connect.cursor()
 
-        # Create the Ward table if not exist
+        # Create the Unit table if not exist
         self.__checkTable(cursor, self.__MsgTable_Name, '''
             Instance_index INTEGER PRIMARY KEY,
             Msg_arr TEXT NOT NULL
@@ -56,14 +56,14 @@ class FallDB:
         cursor.execute(f'DROP TABLE IF EXISTS {Table_name}')
 
 
-    def __WardTable(self):
+    def __UnitTable(self):
         # Connect to the SQLite database
         db_connect = sqlite3.connect(self.__database_name)
         cursor = db_connect.cursor()
 
-        # Create the Ward table if not exist
-        self.__checkTable(cursor, self.__WardTable_Name, '''
-            Ward_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        # Create the Unit table if not exist
+        self.__checkTable(cursor, self.__UnitTable_Name, '''
+            Unit_id INTEGER PRIMARY KEY AUTOINCREMENT,
             Label TEXT NOT NULL
         ''')
         db_connect.commit()
@@ -86,10 +86,10 @@ class FallDB:
         # Create the Rooms table if not created yet
         self.__checkTable(cursor, self.__RoomTable_Name, f'''
             Room_id INTEGER PRIMARY KEY,
-            Ward_id INTEGER NOT NULL,
+            Unit_id INTEGER NOT NULL,
             Label TEXT NOT NULL,
             Status_id INTEGER NOT NULL,
-            FOREIGN KEY (Ward_id) REFERENCES {self.__WardTable_Name}(Ward_id) ON DELETE CASCADE,
+            FOREIGN KEY (Unit_id) REFERENCES {self.__UnitTable_Name}(Unit_id) ON DELETE CASCADE,
             FOREIGN KEY (Status_id) REFERENCES {self.__RefStatusTable_Name}(Status_id) ON DELETE CASCADE
         ''')
         db_connect.commit()
@@ -135,29 +135,30 @@ class FallDB:
         self.__tableWrite(access_Msg, f'INSERT INTO {self.__MsgTable_Name} (Instance_index, Msg_arr) VALUES(?)', (Instance_index, Msg_arr))
     
     def _deleteMsg(self, Instance_index):
+        
         access_Msg = self.__MsgTable()
         self.__tableWrite(access_Msg, f'DELETE FROM {self.__MsgTable_Name} WHERE Instance_index = ?', (Instance_index,))
 
 
-    # WARD TABLE QUERY
-    def getWard(self, Ward_id=None):
-        access_Ward = self.__WardTable()
-        if Ward_id is None: # meaning get all wards
-            return self.__tableRead(access_Ward.cursor(), f'SELECT * FROM {self.__WardTable_Name}')
-        else: # meaning get just a particular wards
-            return self.__tableRead(access_Ward.cursor(), f'SELECT (Label) FROM {self.__WardTable_Name} WHERE Ward_id = ?', Ward_id)
+    # UNIT TABLE QUERY
+    def getUnit(self, Unit_id=None):
+        access_Unit = self.__UnitTable()
+        if Unit_id is None: # meaning get all units
+            return self.__tableRead(access_Unit.cursor(), f'SELECT * FROM {self.__UnitTable_Name}')
+        else: # meaning get just a particular units
+            return self.__tableRead(access_Unit.cursor(), f'SELECT (Label) FROM {self.__UnitTable_Name} WHERE Unit_id = ?', Unit_id)
    
-    def addWard(self,  Label):
-        access_Ward = self.__WardTable()
-        self.__tableWrite(access_Ward, f'INSERT INTO {self.__WardTable_Name} (Label) VALUES(?)', (Label,))
+    def addUnit(self,  Label):
+        access_Unit = self.__UnitTable()
+        self.__tableWrite(access_Unit, f'INSERT INTO {self.__UnitTable_Name} (Label) VALUES(?)', (Label,))
  
-    def updateWard(self, Ward_id, Label):
-        access_Ward = self.__WardTable()
-        self.__tableWrite(access_Ward, f'UPDATE {self.__WardTable_Name} SET Label = ? WHERE Ward_id = ?', (Label, Ward_id))
+    def updateUnit(self, Unit_id, Label):
+        access_Unit = self.__UnitTable()
+        self.__tableWrite(access_Unit, f'UPDATE {self.__UnitTable_Name} SET Label = ? WHERE Unit_id = ?', (Label, Unit_id))
     
-    def deleteWard(self, Ward_id):
-        access_Ward = self.__WardTable()
-        self.__tableWrite(access_Ward, f'DELETE FROM {self.__WardTable_Name} WHERE Ward_id = ?', (Ward_id,))
+    def deleteUnit(self, Unit_id):
+        access_Unit = self.__UnitTable()
+        self.__tableWrite(access_Unit, f'DELETE FROM {self.__UnitTable_Name} WHERE Unit_id = ?', (Unit_id,))
 
     # REF_STATUS_QUERY
     def getStatus(self, Status_id=None):
@@ -176,6 +177,7 @@ class FallDB:
         self.__tableWrite(access_Status, f'UPDATE {self.__RefStatusTable_Name} SET Label = ? WHERE Status_id = ?', (Label, Status_id))
     
     def deleteStatus(self, Status_id):
+        
         access_Status = self.__Ref_StatusTable()
         self.__tableWrite(access_Status, f'DELETE FROM {self.__RefStatusTable_Name} WHERE Status_id = ?', (Status_id,))
 
@@ -185,14 +187,14 @@ class FallDB:
         access_Room = self.__RoomTable()
         return self.__tableRead(access_Room.cursor(), f'SELECT * FROM {self.__RoomTable_Name}')
            
-    def addRoom(self, Room_id, Ward_id, Label): # Add a Room to the Room table
+    def addRoom(self, Room_id, Unit_id, Label): # Add a Room to the Room table
         '''Add a new record (Room) with it 
         {Room_id} (read from camera and entered by the user),
-        {Ward_id} of the ward the room is found in
+        {Unit_id} of the unit the room is found in
         {Label} entered by the UserWarning
         Status will be set to 0 by default'''
         access_Room = self.__RoomTable()
-        self.__tableWrite(access_Room, f'INSERT INTO {self.__RoomTable_Name} (Room_id, Ward_id, Label, Status_id) VALUES(?, ?, ?, ?)', (Room_id, Ward_id, Label, 0))
+        self.__tableWrite(access_Room, f'INSERT INTO {self.__RoomTable_Name} (Room_id, Unit_id, Label, Status_id) VALUES(?, ?, ?, ?)', (Room_id, Unit_id, Label, 0))
  
     def updateRoom(self, Ref_Field_name, Ref_Field_value, Update_Field_name, Update_Field_value):
         '''Update {Update_Field_name} to the value {Update_Field_value} for a record with {Ref_Field_name} = {Ref_Field_value}'''
