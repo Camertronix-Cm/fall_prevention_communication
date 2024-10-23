@@ -132,7 +132,7 @@ class FallDB:
    
     def _addMsg(self, Instance_index,  Msg_arr): 
         access_Msg = self.__MsgTable()
-        self.__tableWrite(access_Msg, f'INSERT INTO {self.__MsgTable_Name} (Instance_index, Msg_arr) VALUES(?)', (Instance_index, Msg_arr))
+        self.__tableWrite(access_Msg, f'INSERT INTO {self.__MsgTable_Name} (Instance_index, Msg_arr) VALUES(?, ?)', (Instance_index, Msg_arr))
     
     def _deleteMsg(self, Instance_index):
         

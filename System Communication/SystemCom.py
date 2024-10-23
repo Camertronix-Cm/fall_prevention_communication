@@ -1,7 +1,7 @@
 from SystemDB import FallDB, FallFile
 import json
 import time
-# import serial
+import serial
 import struct
 
 class _Messaging(FallDB):
@@ -87,10 +87,10 @@ class _Messaging(FallDB):
         if TimeAfterLastSent > 2:
             # get the next message to send [Check if a message exist for the current SendingInstance]
             message_arr_row = self._getMsg(self._SendingInstance)
-            if message_arr_json:
+            if message_arr_row:
                 print("self._SendingInstance " + str(self._SendingInstance))
                 # Extract the JSON string from the database result
-                message_arr_json = message_arr_row[0] # gets the turple of the message string arr
+                message_arr_json = message_arr_row[0][0] # gets the turple of the message string arr
                 # Deserialize the JSON string back into a list of hex strings
                 message_arr_str = json.loads(message_arr_json)
                 # Convert the list of hex strings back to integers
@@ -120,7 +120,9 @@ class _Messaging(FallDB):
             message_arr.extend([bed_num, Alert_severity]) # add the bed_num and the alert_severity
             # add the timestamp
             message_arr.extend(struct.pack('!I', message_timestamp))
-        message_arr.extend(msg_arr[3:])
+            message_arr.extend(msg_arr[3:])
+        else:
+            message_arr.extend(msg_arr[1:])
         self._sendOrPendMsg(message_arr)
     
     def _checkForIncoming(self):
@@ -286,7 +288,7 @@ class Terminal(_Messaging):
         super().__init__()
 
 
-    def _sendPairRequest(self, des_ID):
+    def sendPairRequest(self, des_ID):
         '''Send mesh message command to request pair to the destination {des_ID}'''
         pair_cmd = [0x07, 0, (des_ID >> 8) & 0xff, des_ID & 0xff, self._Hi_MyUID, self._Lo_MyUID, 0, 0]
         print("Sending pair request")
@@ -340,15 +342,15 @@ class Terminal(_Messaging):
 
             for num in range(num_coords):
                 coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + ',' + str(coord_array[7] + coord_array[6]*0x100)
-                if coord_source_id+num not in Bed_ids: # if the bed id is not in the bed record (that is no record for that bed exist yet)
+                if coord_source_id + num+1 not in Bed_ids: # if the bed id is not in the bed record (that is no record for that bed exist yet)
                     self.addBed(coord_source_id + num+1, coord_source_id, '') # add a new record for the bed
-                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str) # update the coordinates
+                self.updateBed('Bed_id', coord_source_id + num+1, 'Coordinates', coord_str) # update the coordinates
                 # remove the first eight elements of the arr
                 coord_array = coord_array[8:]
         elif coord_key == 'Patient':
             for num in range(num_coords):
                 coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100)
-                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str)
+                self.updateBed('Bed_id', coord_source_id + num+1, 'Coordinates', coord_str)
                 # remove the first four elements of the arr
                 coord_array = coord_array[4:]
 
@@ -376,9 +378,10 @@ class Terminal(_Messaging):
                 print(f'Number of coordinates: {number_of_coords}')
                 cd_ar = incoming[15:15+number_of_coords*8]
                 print("".join(hex(num) for num in cd_ar))
-                for cd in range(number_of_coords*8):
-                    print(f'{cd_ar[cd+1] + cd_ar[cd+0]}, {cd_ar[cd+3] + cd_ar[cd+2]}, {cd_ar[cd+5] + cd_ar[cd+4]}, {cd_ar[cd+7] + cd_ar[cd+6]}')
-                    cd += 8
+                for cd in range(0, number_of_coords):
+                    print(f'{cd_ar[1] + cd_ar[0]}, {cd_ar[3] + cd_ar[2]}, {cd_ar[5] + cd_ar[4]}, {cd_ar[7] + cd_ar[6]}')
+                    cd_ar = cd_ar[8:]
+                
                 # Save the coordinates
                 self._coordinatesHandler('Bed', incoming[11:15+number_of_coords*8]) # 0, 1 source, 2, 3 number of coords, 4-num_of_coords*8 bed coords
                
@@ -388,9 +391,10 @@ class Terminal(_Messaging):
                 print(f'Number of coordinates: {num_of_coords}')
                 cd_ar = incoming[15:15+num_of_coords*4]
                 print("".join(hex(num) for num in cd_ar))
-                for cd in range(num_of_coords*4):
-                    print(f'{cd_ar[cd+1] + cd_ar[cd+0]}, {cd_ar[cd+3] + cd_ar[cd+2]}')
-                    cd += 4
+                for cd in range(0, num_of_coords):
+                    print(f'{cd_ar[1] + cd_ar[0]}, {cd_ar[3] + cd_ar[2]}')
+                    cd_ar = cd_ar[4:]
+                
                 # Save the coordinates
                 self._coordinatesHandler('Patient', incoming[11:15+num_of_coords*4]) # 0, 1 source, 2, 3 number of coords, 4-num_of_coords*4 patient coords
 
