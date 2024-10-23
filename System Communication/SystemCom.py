@@ -1,7 +1,7 @@
 from SystemDB import FallDB, FallFile
 import json
 import time
-import serial
+# import serial
 import struct
 
 class _Messaging(FallDB):
@@ -322,16 +322,27 @@ class Terminal(_Messaging):
         '''Will handle the incoming coordinates and save in the database'''
         # coord_arr is the source_ID [0, 1], the number of coordinates [2, 3], the coordinates [4 ---]
         # get the source of the coords
-        coord_source_id = coord_arr[0] + coord_arr[1]*0x100
+        coord_source_id = coord_arr[1] + coord_arr[0]*0x100
         # get the number of coords
-        num_coords = coord_arr[2] + coord_arr[3]*0x100
+        num_coords = coord_arr[3] + coord_arr[2]*0x100
         # get the coordinates
         coord_array = coord_arr[4:]
         # add the coordinates to the database
         if coord_key == 'Bed':
+            # get the bed record and extratce the bed ids
+            Bed_record = self.getBed()
+            print(f'Bed_record: {Bed_record}')
+            Bed_ids = []
+            for bed in Bed_record: # get each bed record (turple)
+                print(f'bed: {bed}')
+                Bed_ids.extend([bed[0]]) # bed id are the first element of the tuple
+            print(f'Bed_ids: {Bed_ids}')
+
             for num in range(num_coords):
-                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + str(coord_array[7] + coord_array[6]*0x100)
-                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str)
+                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + ',' + str(coord_array[7] + coord_array[6]*0x100)
+                if coord_source_id+num not in Bed_ids: # if the bed id is not in the bed record (that is no record for that bed exist yet)
+                    self.addBed(coord_source_id + num+1, coord_source_id, '') # add a new record for the bed
+                self.updateBed('Bed_id', coord_source_id+num, 'Coordinates', coord_str) # update the coordinates
                 # remove the first eight elements of the arr
                 coord_array = coord_array[8:]
         elif coord_key == 'Patient':

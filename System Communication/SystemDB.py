@@ -234,7 +234,7 @@ class FallDB:
         self.__tableWrite(access_Bed, f'DELETE FROM {self.__BedTable_Name} WHERE {Field_name} = ?', (Field_value,))
 
     # ALERT_QUERY
-    def getAlert(self, Field_name=None, Field_value=None):
+    def getAlert(self):
         '''Returns the entire alert object'''
         access_Alert = self.__AlertTable()
         return self.__tableRead(access_Alert.cursor(), f'SELECT * FROM {self.__AlertTable_Name}')
