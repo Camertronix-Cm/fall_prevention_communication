@@ -1,4 +1,6 @@
 from SystemDB import FallDB, FallFile
+# if having a SysteDB file not found error, comment out the line above and uncomment the line below
+# from fall_prevention_communication.SystemDB import FallDB, FallFile
 import json
 import time
 import serial
