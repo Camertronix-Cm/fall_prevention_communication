@@ -144,7 +144,9 @@ class FallDB:
     def getUnit(self, Unit_id=None):
         access_Unit = self.__UnitTable()
         if Unit_id is None: # meaning get all units
-            return self.__tableRead(access_Unit.cursor(), f'SELECT * FROM {self.__UnitTable_Name}')
+            unit_table = self.__tableRead(access_Unit.cursor(), f'SELECT * FROM {self.__UnitTable_Name}')
+            print(f'getUnit Unit Table: {unit_table}')
+            return unit_table
         else: # meaning get just a particular units
             return self.__tableRead(access_Unit.cursor(), f'SELECT (Label) FROM {self.__UnitTable_Name} WHERE Unit_id = ?', Unit_id)
    
@@ -182,10 +184,13 @@ class FallDB:
         self.__tableWrite(access_Status, f'DELETE FROM {self.__RefStatusTable_Name} WHERE Status_id = ?', (Status_id,))
 
     # ROOM_QUERY
-    def getRoom(self, Field_name=None, Field_value=None):
+    def getRoom(self, room_id=None):
         '''Returns the entire room object'''
         access_Room = self.__RoomTable()
-        return self.__tableRead(access_Room.cursor(), f'SELECT * FROM {self.__RoomTable_Name}')
+        if room_id is not None:
+            return self.__tableRead(access_Room.cursor(), f'SELECT * FROM {self.__RoomTable_Name} WHERE Room_id = ?', room_id)
+        else:
+            return self.__tableRead(access_Room.cursor(), f'SELECT * FROM {self.__RoomTable_Name}')
            
     def addRoom(self, Room_id, Unit_id, Label): # Add a Room to the Room table
         '''Add a new record (Room) with it 
@@ -211,6 +216,11 @@ class FallDB:
         '''Returns the entire bed object'''
         access_Bed = self.__BedTable()
         return self.__tableRead(access_Bed.cursor(), f'SELECT * FROM {self.__BedTable_Name}')
+
+    def getBed_room(self, bed_id):
+        '''Return the room id of the bed'''
+        access_Bed = self.__BedTable()
+        return self.__tableRead(access_Bed.cursor(), f'SELECT (Room_id) FROM {self.__BedTable_Name} WHERE Bed_id = ?', bed_id)
    
     def addBed(self, Bed_id, Room_id, Label): # Add a Bed to the Bed table
         '''Add a new record (Bed) with it 
@@ -221,14 +231,14 @@ class FallDB:
         access_Bed = self.__BedTable()
         self.__tableWrite(access_Bed, f'INSERT INTO {self.__BedTable_Name} (Bed_id, Room_id, Label) VALUES(?, ?, ?)', (Bed_id, Room_id, Label))
  
-    def updateBed(self, Ref_Field_name, Ref_Field_value, Update_Field_name, Update_Field_value=''):
+    def updateBed(self, Ref_Field_name, Ref_Field_value, Update_Field_name, Update_Field_value=None):
         '''Update {Update_Field_name} to the value {Update_Field_value} for a record with {Ref_Field_name} = {Ref_Field_value}
         If you want to delete an cell (like a case where patient is logged out so you want to remove the patient name from the bed)
         you won't need to enter a value for {Update_Field_value}'''
         access_Bed = self.__BedTable()
         self.__tableWrite(access_Bed, f'UPDATE {self.__BedTable_Name} SET {Update_Field_name} = ? WHERE {Ref_Field_name} = ?', (Update_Field_value, Ref_Field_value))
     
-    def deleteBed(self, Field_name, Field_value): # Delete a Bed from the Bed table
+    def deleteBed(self, Field_name, Field_value): # Delete a Bed record from the Bed table
         '''Delete any record with {Field_name} = {Field_value}'''
         access_Bed = self.__BedTable()
         self.__tableWrite(access_Bed, f'DELETE FROM {self.__BedTable_Name} WHERE {Field_name} = ?', (Field_value,))

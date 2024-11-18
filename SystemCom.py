@@ -288,6 +288,7 @@ class Camera(_Messaging, FallFile):
 class Terminal(_Messaging):
     def __init__(self): 
         super().__init__()
+        self.NewMsgAlert = False
 
 
     def sendPairRequest(self, des_ID):
@@ -321,6 +322,7 @@ class Terminal(_Messaging):
         message_content = ''.join([chr(x) for x in message_array])
         # add the message to the database
         self.addAlert(message_timestamp, source_bed_id, alert_severity, message_content)
+        self.NewMsgAlert = True # to tell the communication thread a new message just entered
     
     def _coordinatesHandler(self, coord_key, coord_arr):
         '''Will handle the incoming coordinates and save in the database'''
@@ -343,7 +345,8 @@ class Terminal(_Messaging):
             print(f'Bed_ids: {Bed_ids}')
 
             for num in range(num_coords):
-                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + ',' + str(coord_array[7] + coord_array[6]*0x100)
+                # coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + ',' + str(coord_array[7] + coord_array[6]*0x100)
+                coord_str = str([coord_array[1] + coord_array[0]*0x100, coord_array[3] + coord_array[2]*0x100, coord_array[5] + coord_array[4]*0x100, coord_array[7] + coord_array[6]*0x100])
                 if coord_source_id + num+1 not in Bed_ids: # if the bed id is not in the bed record (that is no record for that bed exist yet)
                     self.addBed(coord_source_id + num+1, coord_source_id, '') # add a new record for the bed
                 self.updateBed('Bed_id', coord_source_id + num+1, 'Coordinates', coord_str) # update the coordinates
@@ -351,7 +354,8 @@ class Terminal(_Messaging):
                 coord_array = coord_array[8:]
         elif coord_key == 'Patient':
             for num in range(num_coords):
-                coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100)
+                # coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100)
+                coord_str = str([coord_array[1] + coord_array[0]*0x100, coord_array[3] + coord_array[2]*0x100])
                 self.updateBed('Bed_id', coord_source_id + num+1, 'Coordinates', coord_str)
                 # remove the first four elements of the arr
                 coord_array = coord_array[4:]
