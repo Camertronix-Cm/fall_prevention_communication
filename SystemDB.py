@@ -129,13 +129,20 @@ class FallDB:
     def _getMsg(self, Instance_index=None):
         access_Msg = self.__MsgTable()
         return self.__tableRead(access_Msg.cursor(), f'SELECT (Msg_arr) FROM {self.__MsgTable_Name} WHERE Instance_index = ?', Instance_index)
+    
+    # def _getMsgs(self):
+    #     access_Msg = self.__MsgTable()
+    #     return self.__tableRead(access_Msg.cursor(), f'SELECT * FROM {self.__MsgTable_Name}')
    
     def _addMsg(self, Instance_index,  Msg_arr): 
         access_Msg = self.__MsgTable()
         self.__tableWrite(access_Msg, f'INSERT INTO {self.__MsgTable_Name} (Instance_index, Msg_arr) VALUES(?, ?)', (Instance_index, Msg_arr))
     
+    # def _addMsg(self,  Msg_arr): 
+    #     access_Msg = self.__MsgTable()
+    #     self.__tableWrite(access_Msg, f'INSERT INTO {self.__MsgTable_Name} (Msg_arr) VALUES(?)', (Msg_arr,))
+    
     def _deleteMsg(self, Instance_index):
-        
         access_Msg = self.__MsgTable()
         self.__tableWrite(access_Msg, f'DELETE FROM {self.__MsgTable_Name} WHERE Instance_index = ?', (Instance_index,))
 

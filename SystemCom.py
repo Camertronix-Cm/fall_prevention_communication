@@ -1,6 +1,4 @@
-from SystemDB import FallDB, FallFile
-# if having a SysteDB file not found error, comment out the line above and uncomment the line below
-# from fall_prevention_communication.SystemDB import FallDB, FallFile
+from fall_prevention_communication.SystemDB import FallDB, FallFile
 import json
 import time
 import serial
@@ -10,6 +8,7 @@ class _Messaging(FallDB):
     def __init__(self):
         super().__init__()
         self.__ser = serial.Serial("/dev/ttyACM0", 115200, timeout=0.5)
+        # self.__ser = None
         self.__Hi_Premeable = 0xAA
         self.__Lo_Premeable = 0x55
         self.__HiByte = 0xFF
@@ -67,12 +66,19 @@ class _Messaging(FallDB):
 
             # it's a message, so add to pending message register
             print("adding current message")
-            # Convert the hexadecimal array to a list of hex strings
-            message_arr_str = [hex(x) for x in message_arr]
-            # Convert the list of hex strings to a JSON string
-            message_arr_json = json.dumps(message_arr_str)
+            print(f"message_arr: {message_arr}")
+            print(f"str(message_arr): {str(message_arr)}")
+            # # Convert the hexadecimal array to a list of hex strings
+            # message_arr_str = [hex(x) for x in message_arr]
+            # print(f"message_arr_str: {message_arr_str}")
+            # # Convert the list of hex strings to a JSON string
+            # message_arr_json = json.dumps(message_arr_str)
+            # print(f"message_arr_json: {message_arr_json}")
+
             # Now add the message array as string on the pending messages database
-            self._addMsg(instance_index, message_arr_json)
+            self._addMsg(instance_index, str(message_arr))
+            # self._addMsg(str(message_arr))
+            print("meassage added")
         
         else: # if not, then send the array to the modem
             message_arr.extend(sending_arr)
@@ -80,6 +86,8 @@ class _Messaging(FallDB):
             self.__ser.write(message_arr)
 
     def _pendingMsgSend(self):
+        # print('.') 
+        # time.sleep(2)
         '''Function that does the actual message transmission
         It checks through each Pending message address if there's a message to be sent and sends it
         or go to the next address if there's no pending message to be sent'''
@@ -91,12 +99,15 @@ class _Messaging(FallDB):
             message_arr_row = self._getMsg(self._SendingInstance)
             if message_arr_row:
                 print("self._SendingInstance " + str(self._SendingInstance))
+                print(message_arr_row)
+                # print(" ".join(hex(num) for num in message_arr_row))
                 # Extract the JSON string from the database result
                 message_arr_json = message_arr_row[0][0] # gets the turple of the message string arr
                 # Deserialize the JSON string back into a list of hex strings
-                message_arr_str = json.loads(message_arr_json)
-                # Convert the list of hex strings back to integers
-                message_arr = [int(x, 16) for x in message_arr_str]
+                message_arr = json.loads(message_arr_json)
+                # # Convert the list of hex strings back to integers
+                # message_arr = [int(x, 16) for x in message_arr_str]
+                print(f'message_arr: {message_arr}')
                 
                 # Now send the array over serial
                 self.__ser.write(message_arr) # send the array in that id
@@ -106,6 +117,29 @@ class _Messaging(FallDB):
                 if self._SendingInstance == 0xFF:
                     self._SendingInstance = 1
                 self.__LastMeshMessageSendTime = 0 # indicating no message was sent
+            # # get the next message to send
+            # # get the message table
+            # pending_msgs = self._getMsgs()
+            # if pending_msgs:
+            #     print(f"all msgs: {pending_msgs}") # [(id, '[]'),]
+            #     # get the first   message
+            #     pending_msgs = pending_msgs[0]
+            #     print(f"first msgs: {pending_msgs}") # [(id, '[]'),]
+            #     # the message idddddd
+            #     self._SendingInstance = pending_msgs[0]
+            #     print("self._SendingInstance " + str(self._SendingInstance))
+            #     # the messsage content
+            #     message_arr_str = pending_msgs[1]
+            #     print(message_arr_str)
+            #     # Deserialize the JSON string back into a list of hex strings
+            #     message_arr = json.loads(message_arr_str)
+            #     print(f'message_arr: {message_arr}')
+                
+            #     # Now send the array over serial
+            #     self.__ser.write(message_arr) # send the array in that id
+            #     self.__LastMeshMessageSendTime = int(time.time()) # get the current message sent time
+            # else: # if no pending msg in that address, go to the next message address where the check will be done
+            #     self.__LastMeshMessageSendTime = 0 # indicating no message was sent
 
     def _sendMeshMessage(self, msg_destination, msg_arr):
         '''Will send the message packet {msg_arr} to {msg_destination}'''
@@ -295,6 +329,7 @@ class Terminal(_Messaging):
         '''Send mesh message command to request pair to the destination {des_ID}'''
         pair_cmd = [0x07, 0, (des_ID >> 8) & 0xff, des_ID & 0xff, self._Hi_MyUID, self._Lo_MyUID, 0, 0]
         print("Sending pair request")
+        print(pair_cmd)
         self._sendOrPendMsg(pair_cmd)
         print(pair_cmd)
 
