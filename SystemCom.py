@@ -144,22 +144,23 @@ class _Messaging(FallDB):
     def _sendMeshMessage(self, msg_destination, msg_arr):
         '''Will send the message packet {msg_arr} to {msg_destination}'''
         # Send mesh message command, Message souce and destination
-        message_type = msg_arr[0]
-        message_arr = [0x07, message_type]
-        message_arr.extend(msg_destination) # add destination (destination is same for camera but will be different for terminal)
-        message_arr.extend([self._Hi_MyUID, self._Lo_MyUID]) # add source
-        
-        if message_type == 4: # if it's a notification then add alert severifty
-            message_timestamp = int(time.time()) # get the current timestamps
-            bed_num = msg_arr[1]
-            Alert_severity = msg_arr[2]
-            message_arr.extend([bed_num, Alert_severity]) # add the bed_num and the alert_severity
-            # add the timestamp
-            message_arr.extend(struct.pack('!I', message_timestamp))
-            message_arr.extend(msg_arr[3:])
-        else:
-            message_arr.extend(msg_arr[1:])
-        self._sendOrPendMsg(message_arr)
+        if msg_destination[0] == 0 and msg_destination[1] == 0:
+            message_type = msg_arr[0]
+            message_arr = [0x07, message_type]
+            message_arr.extend(msg_destination) # add destination (destination is same for camera but will be different for terminal)
+            message_arr.extend([self._Hi_MyUID, self._Lo_MyUID]) # add source
+            
+            if message_type == 4: # if it's a notification then add alert severifty
+                message_timestamp = int(time.time()) # get the current timestamps
+                bed_num = msg_arr[1]
+                Alert_severity = msg_arr[2]
+                message_arr.extend([bed_num, Alert_severity]) # add the bed_num and the alert_severity
+                # add the timestamp
+                message_arr.extend(struct.pack('!I', message_timestamp))
+                message_arr.extend(msg_arr[3:])
+            else:
+                message_arr.extend(msg_arr[1:])
+            self._sendOrPendMsg(message_arr)
     
     def _checkForIncoming(self):
         '''Collect and Process any serial incoming packets
@@ -324,7 +325,10 @@ class Camera(_Messaging, FallFile):
 class Terminal(_Messaging):
     def __init__(self): 
         super().__init__()
+        # Signals that will load the UI if true
         self.NewMsgAlert = False
+        self.NewPairConfirmed = False
+        
         self._camera_length = 640
         self._camera_width = 640
 
@@ -387,9 +391,10 @@ class Terminal(_Messaging):
 
             for num in range(num_coords):
                 cord_x1 = coord_array[1] + coord_array[0]*0x100
-                cord_y1 = self._camera_width - (coord_array[3] + coord_array[2]*0x100)
                 cord_x2 = cord_x1 + coord_array[5] + coord_array[4]*0x100
-                cord_y2 = cord_y1 + self._camera_width - (coord_array[7] + coord_array[6]*0x100)
+                cord_y2 = coord_array[3] + coord_array[2]*0x100
+                cord_y1 = self._camera_width - (cord_y2 + coord_array[7] + coord_array[6]*0x100)
+                cord_y2 = self._camera_width - cord_y2
                 # coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + ',' + str(coord_array[7] + coord_array[6]*0x100)
                 coord_str = str([cord_x1, cord_y1, cord_x2, cord_y2])
                 if coord_source_id + num+1 not in Bed_ids: # if the bed id is not in the bed record (that is no record for that bed exist yet)
@@ -424,9 +429,12 @@ class Terminal(_Messaging):
                 msg_id  = incoming[14] + incoming[13]*0x100
                 print(f'msg_id: {msg_id} updating {sensor_id}')
 
-                # Ensure it's a response 
+                # Ensure it's a response
                 if msg_id == 1: # it's a pair response implying it's from a camera
-                    self.updateRoom("Room_id", sensor_id, "Status_id", 2)
+                    status_id = 1
+                    if status_id == 1: # if still not paired
+                        self.updateRoom("Room_id", sensor_id, "Status_id", 2)
+                        self.NewPairConfirmed = True # to tell the communication thread a new pair confirmation just entered
                   
             elif message_type == 2: # Incoming bed coordinates
                 print(" ---------------Bed coordinate------------- ")
