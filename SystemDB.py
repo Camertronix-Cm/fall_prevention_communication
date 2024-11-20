@@ -117,6 +117,7 @@ class FallDB:
         # Create the Alerts table if not created yet
         self.__checkTable(cursor, self.__AlertTable_Name, f'''
             A_timestamp TIMESTAMP PRIMARY KEY,
+            Room_id INTEGER NOT NULL,
             Bed_id INTEGER NOT NULL,
             Type INTEGER,
             Content TEXT,
@@ -251,20 +252,24 @@ class FallDB:
         self.__tableWrite(access_Bed, f'DELETE FROM {self.__BedTable_Name} WHERE {Field_name} = ?', (Field_value,))
 
     # ALERT_QUERY
-    def getAlert(self):
+    def getAlert(self, Room_id = None):
         '''Returns the entire alert object'''
         access_Alert = self.__AlertTable()
-        return self.__tableRead(access_Alert.cursor(), f'SELECT * FROM {self.__AlertTable_Name}')
-           
-    def addAlert(self, A_timestamp, Bed_id, Type, Content): # Add a Alert to the Alert table
+        if Room_id is None:
+            return self.__tableRead(access_Alert.cursor(), f'SELECT * FROM {self.__AlertTable_Name}')
+        else:
+            return self.__tableRead(access_Alert.cursor(), f'SELECT * FROM {self.__AlertTable_Name} WHERE Room_id = ?', Room_id)
+
+    def addAlert(self, A_timestamp, Room_id, Bed_id, Type, Content): # Add a Alert to the Alert table
         '''Add a new record (Alert) with it 
         {A_timestamp} timestamp of the alert
+        {Room_id} of the Room that the bed is found in
         {Bed_id} of the Bed that triggered the Alert
         {Type} (the serverity of the alert),
         {Content} of the alert
         Only these three are required for the creation of a new bed record'''
         access_Alert = self.__AlertTable()
-        self.__tableWrite(access_Alert, f'INSERT INTO {self.__AlertTable_Name} (A_timestamp, Bed_id, Type, Content) VALUES(?, ?, ?, ?)', (A_timestamp, Bed_id, Type, Content))
+        self.__tableWrite(access_Alert, f'INSERT INTO {self.__AlertTable_Name} (A_timestamp, Room_id, Bed_id, Type, Content) VALUES(?, ?, ?, ?, ?)', (A_timestamp, Room_id, Bed_id, Type, Content))
  
     def updateAlert(self, Ref_Field_name, Ref_Field_value, Update_Field_name, Update_Field_value=''):
         '''Update {Update_Field_name} to the value {Update_Field_value} for a record with {Ref_Field_name} = {Ref_Field_value}'''

@@ -199,7 +199,9 @@ class _Messaging(FallDB):
                 if incoming[8] == 0x0F: # if it a message delivery feedback then delete the current message that was being sent
                     print("gotten some feeds")
                     instance_index = incoming[4]
+                    print(f'before {self._getMsg(instance_index)}')
                     self._deleteMsg(instance_index)
+                    print(f'after {self._getMsg(instance_index)}')
                     return bytearray()
                 else: # it's an incoming message
                     # Cut out the message content to send over mesh
@@ -323,6 +325,9 @@ class Terminal(_Messaging):
     def __init__(self): 
         super().__init__()
         self.NewMsgAlert = False
+        self._camera_length = 640
+        self._camera_width = 640
+
 
 
     def sendPairRequest(self, des_ID):
@@ -336,7 +341,7 @@ class Terminal(_Messaging):
     def sendCommand(self, cmd_destination, the_cmd):
         '''To send the command {the_cmd} to {cmd_destination}'''
         cmd_arr = [0x01, the_cmd]
-        self._sendMeshMessage(cmd_destination, cmd_arr)
+        self._sendMeshMessage([(cmd_destination >> 8) & 0xff, cmd_destination & 0xff], cmd_arr)
     
     def _messageHandler(self, message_arr): # array from pos 11
         '''Will handle the incoming messages and save in the database'''
@@ -345,7 +350,8 @@ class Terminal(_Messaging):
         print(" ".join(hex(num) for num in message_arr))
         # get the source id of the incoming alert
         # the bed_id will be the camera id + the bed num
-        source_bed_id = message_arr[1] + message_arr[0]*0x100 + message_arr[2]
+        source_id = message_arr[1] + message_arr[0]*0x100
+        source_bed = message_arr[2]
         # get the alert severity
         alert_severity = message_arr[3]
         # get the timestamp
@@ -356,7 +362,7 @@ class Terminal(_Messaging):
         # covert the message content to a string
         message_content = ''.join([chr(x) for x in message_array])
         # add the message to the database
-        self.addAlert(message_timestamp, source_bed_id, alert_severity, message_content)
+        self.addAlert(message_timestamp, source_id, source_id + source_bed, alert_severity, message_content)
         self.NewMsgAlert = True # to tell the communication thread a new message just entered
     
     def _coordinatesHandler(self, coord_key, coord_arr):
@@ -380,18 +386,25 @@ class Terminal(_Messaging):
             print(f'Bed_ids: {Bed_ids}')
 
             for num in range(num_coords):
+                cord_x1 = coord_array[1] + coord_array[0]*0x100
+                cord_y1 = self._camera_width - (coord_array[3] + coord_array[2]*0x100)
+                cord_x2 = cord_x1 + coord_array[5] + coord_array[4]*0x100
+                cord_y2 = cord_y1 + self._camera_width - (coord_array[7] + coord_array[6]*0x100)
                 # coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100) + ',' + str(coord_array[5] + coord_array[4]*0x100) + ',' + str(coord_array[7] + coord_array[6]*0x100)
-                coord_str = str([coord_array[1] + coord_array[0]*0x100, coord_array[3] + coord_array[2]*0x100, coord_array[5] + coord_array[4]*0x100, coord_array[7] + coord_array[6]*0x100])
+                coord_str = str([cord_x1, cord_y1, cord_x2, cord_y2])
                 if coord_source_id + num+1 not in Bed_ids: # if the bed id is not in the bed record (that is no record for that bed exist yet)
+                    print(f"Adding bed {coord_source_id + num+1}")
                     self.addBed(coord_source_id + num+1, coord_source_id, '') # add a new record for the bed
+                print(f'Bed_record: {self.getBed()}')
                 self.updateBed('Bed_id', coord_source_id + num+1, 'Coordinates', coord_str) # update the coordinates
+                print(f'Bed_updated: {self.getBed()}')
                 # remove the first eight elements of the arr
                 coord_array = coord_array[8:]
         elif coord_key == 'Patient':
             for num in range(num_coords):
                 # coord_str = str(coord_array[1] + coord_array[0]*0x100) + ',' + str(coord_array[3] + coord_array[2]*0x100)
-                coord_str = str([coord_array[1] + coord_array[0]*0x100, coord_array[3] + coord_array[2]*0x100])
-                self.updateBed('Bed_id', coord_source_id + num+1, 'Coordinates', coord_str)
+                coord_str = str([coord_array[1] + coord_array[0]*0x100, self._camera_width - (coord_array[3] + coord_array[2]*0x100)])
+                self.updateBed('Bed_id', coord_source_id + num+1, 'P_Coordinates', coord_str)
                 # remove the first four elements of the arr
                 coord_array = coord_array[4:]
 
@@ -406,21 +419,23 @@ class Terminal(_Messaging):
                 print("Incoming pair response")
                 self._Hi_ExUID = incoming[11]
                 self._Lo_ExUID = incoming[12]
-                print(f"External UID: 0x{format(self._Lo_ExUID + self._Hi_ExUID*0x100, '04X')}")
+                sensor_id = self._Lo_ExUID + self._Hi_ExUID*0x100
+                print(f"External UID: 0x{format(sensor_id, '04X')}")
                 msg_id  = incoming[14] + incoming[13]*0x100
+                print(f'msg_id: {msg_id} updating {sensor_id}')
 
                 # Ensure it's a response 
                 if msg_id == 1: # it's a pair response implying it's from a camera
-                    self.saveCameraInfo(incoming[10] + incoming[9]*0x100, "", 'status') # update camera status to active
+                    self.updateRoom("Room_id", sensor_id, "Status_id", 2)
                   
             elif message_type == 2: # Incoming bed coordinates
                 print(" ---------------Bed coordinate------------- ")
                 number_of_coords = incoming[14] + incoming[13]*0x100
                 print(f'Number of coordinates: {number_of_coords}')
                 cd_ar = incoming[15:15+number_of_coords*8]
-                print("".join(hex(num) for num in cd_ar))
+                print(", ".join(hex(num) for num in cd_ar))
                 for cd in range(0, number_of_coords):
-                    print(f'{cd_ar[1] + cd_ar[0]}, {cd_ar[3] + cd_ar[2]}, {cd_ar[5] + cd_ar[4]}, {cd_ar[7] + cd_ar[6]}')
+                    print(f'{cd_ar[1] + cd_ar[0]*0x100}, {self._camera_width - (cd_ar[3] + cd_ar[2]*0x100)}, {cd_ar[5] + cd_ar[4]*0x100}, {self._camera_width - (cd_ar[7] + cd_ar[6]*0x100)}')
                     cd_ar = cd_ar[8:]
                 
                 # Save the coordinates
@@ -431,9 +446,9 @@ class Terminal(_Messaging):
                 num_of_coords = incoming[14] + incoming[13]*0x100
                 print(f'Number of coordinates: {num_of_coords}')
                 cd_ar = incoming[15:15+num_of_coords*4]
-                print("".join(hex(num) for num in cd_ar))
+                print(" ".join(hex(num) for num in cd_ar))
                 for cd in range(0, num_of_coords):
-                    print(f'{cd_ar[1] + cd_ar[0]}, {cd_ar[3] + cd_ar[2]}')
+                    print(f'{cd_ar[1] + cd_ar[0]*0x100}, {self._camera_width - (cd_ar[3] + cd_ar[2]*0x100)}')
                     cd_ar = cd_ar[4:]
                 
                 # Save the coordinates
