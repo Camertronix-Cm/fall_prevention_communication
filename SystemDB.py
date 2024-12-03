@@ -276,10 +276,13 @@ class FallDB:
         access_Alert = self.__AlertTable()
         self.__tableWrite(access_Alert, f'UPDATE {self.__AlertTable_Name} SET {Update_Field_name} = ? WHERE {Ref_Field_name} = ?', (Update_Field_value, Ref_Field_value))
     
-    def deleteAlert(self, Field_name, Field_value): # Delete a Alert from the Alert table
+    def deleteAlert(self, Room_id: int, Timestamp=None): # Delete a Alert from the Alert table
         '''Delete any record with {Field_name} = {Field_value}'''
         access_Alert = self.__AlertTable()
-        self.__tableWrite(access_Alert, f'DELETE FROM {self.__AlertTable_Name} WHERE {Field_name} = ?', (Field_value,))
+        if Timestamp is None: # just room ID is given meaning delete all alerts associated to that room
+            self.__tableWrite(access_Alert, f'DELETE FROM {self.__AlertTable_Name} WHERE Room_id = ?', (Room_id,))
+        else: # timestamp also given meaning delete a particular alert from a room
+            self.__tableWrite(access_Alert, f'DELETE FROM {self.__AlertTable_Name} WHERE Room_id = ? AND A_timestamp = ?', (Room_id, Timestamp))
 
 
 class FallFile:
