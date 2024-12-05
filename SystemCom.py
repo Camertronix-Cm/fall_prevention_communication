@@ -145,6 +145,8 @@ class _Messaging(FallDB):
         '''Will send the message packet {msg_arr} to {msg_destination}'''
         # Send mesh message command, Message souce and destination
         if msg_destination[0] == 0 and msg_destination[1] == 0:
+            pass
+        else:
             message_type = msg_arr[0]
             message_arr = [0x07, message_type]
             message_arr.extend(msg_destination) # add destination (destination is same for camera but will be different for terminal)
