@@ -28,7 +28,7 @@ class FallDB:
             conn.commit()
         except Exception as e:
             print(f'Error: {e}')
-            self.__tableWrite(conn, sql_query, parameters)
+            # self.__tableWrite(conn, sql_query, parameters)
     
     def __tableRead(self, cursor, sql_query, id=None):
         if id is None:

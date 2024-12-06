@@ -91,7 +91,7 @@ class _Messaging(FallDB):
         '''Function that does the actual message transmission
         It checks through each Pending message address if there's a message to be sent and sends it
         or go to the next address if there's no pending message to be sent'''
-        TimeAfterLastSent = 3
+        TimeAfterLastSent = 1.0
         if self.__LastMeshMessageSendTime > 0:
             TimeAfterLastSent = int(time.time()) - self.__LastMeshMessageSendTime
         if TimeAfterLastSent > 2:
